@@ -1,0 +1,7 @@
+{
+  "name": "Francal Conecta",
+  "description": "Sistema de comunicação corporativa Francal Conecta com gestão de tickets e portais departamentais dinâmicos.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
