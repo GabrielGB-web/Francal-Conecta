@@ -6,8 +6,9 @@ import Dashboard from './components/Dashboard.tsx';
 import TicketSystem from './components/TicketSystem.tsx';
 import DepartmentPortal from './components/DepartmentPortal.tsx';
 import Login from './components/Login.tsx';
-import { Ticket, Department, TicketMessage, TicketStatus, UserProfile, Role, DeptDashboardStats, Announcement, Promotion } from './types';
-import { DEPARTMENTS as INITIAL_DEPARTMENTS } from './constants';
+import { Ticket, Department, TicketMessage, TicketStatus, UserProfile, Role, DeptDashboardStats, Announcement, Promotion } from './types.ts';
+import { DEPARTMENTS as INITIAL_DEPARTMENTS } from './constants.tsx';
+import { supabase } from './services/supabase.ts';
 
 const INITIAL_USERS: UserProfile[] = [
   { id: 'U-001', name: 'João Administrador', dept: 'TI', role: 'TI' },
@@ -38,53 +39,103 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [users, setUsers] = useState<UserProfile[]>(() => {
-    const saved = localStorage.getItem('francal_users');
-    return saved ? JSON.parse(saved) : INITIAL_USERS;
-  });
-
-  const [tickets, setTickets] = useState<Ticket[]>(() => {
-    const saved = localStorage.getItem('francal_tickets');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [deptStats, setDeptStats] = useState<DeptDashboardStats[]>(() => {
-    const saved = localStorage.getItem('francal_stats');
-    return saved ? JSON.parse(saved) : INITIAL_STATS;
-  });
-
-  const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
-    const saved = localStorage.getItem('francal_announcements');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [promotions, setPromotions] = useState<Promotion[]>(() => {
-    const saved = localStorage.getItem('francal_promotions');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [users, setUsers] = useState<UserProfile[]>(INITIAL_USERS);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [deptStats, setDeptStats] = useState<DeptDashboardStats[]>(INITIAL_STATS);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [allDepartments, setAllDepartments] = useState<any[]>(INITIAL_DEPARTMENTS);
   const [activeDeptPortal, setActiveDeptPortal] = useState<Department>('TI');
+  const [loading, setLoading] = useState(true);
 
-  // Efeito para salvar dados sempre que mudarem
+  // Carregar dados iniciais do Supabase
   useEffect(() => {
-    localStorage.setItem('francal_users', JSON.stringify(users));
-    localStorage.setItem('francal_tickets', JSON.stringify(tickets));
-    localStorage.setItem('francal_stats', JSON.stringify(deptStats));
-    localStorage.setItem('francal_announcements', JSON.stringify(announcements));
-    localStorage.setItem('francal_promotions', JSON.stringify(promotions));
-  }, [users, tickets, deptStats, announcements, promotions]);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Buscar Perfis
+        const { data: profiles, error: pError } = await supabase.from('profiles').select('*');
+        if (profiles) {
+          const formattedUsers: UserProfile[] = profiles.map(p => ({
+            id: p.id,
+            name: p.full_name,
+            dept: p.department as Department,
+            role: p.role
+          }));
+          setUsers(formattedUsers.length > 0 ? formattedUsers : INITIAL_USERS);
+        }
+
+        // Buscar Tickets e suas Mensagens
+        const { data: ticketsData } = await supabase.from('tickets').select('*, ticket_messages(*)').order('created_at', { ascending: false });
+        if (ticketsData) {
+          const formattedTickets: Ticket[] = ticketsData.map((t: any) => ({
+            ...t,
+            createdAt: new Date(t.created_at),
+            messages: (t.ticket_messages || []).map((m: any) => ({
+              id: m.id,
+              author: '...', // Precisaremos resolver o nome do autor em um cenário real
+              text: m.text,
+              timestamp: new Date(m.created_at)
+            }))
+          }));
+
+          // Nota: Em um sistema real, idealmente faríamos JOIN com profiles
+          // Aqui vamos simplificar ou buscar autores depois se necessário
+          setTickets(formattedTickets);
+        }
+
+        // Buscar Métricas
+        const { data: metricsData } = await supabase.from('dept_metrics').select('*');
+        if (metricsData) {
+          // Agrupar métricas por departamento
+          const stats: DeptDashboardStats[] = INITIAL_STATS.map(s => {
+            const deptMetrics = metricsData.filter(m => m.department === s.dept);
+            if (deptMetrics.length > 0) {
+              return {
+                dept: s.dept,
+                metrics: deptMetrics.map(m => ({ label: m.label, value: m.value }))
+              };
+            }
+            return s;
+          });
+          setDeptStats(stats);
+        }
+
+        // Buscar Avisos e Promoções
+        const { data: annData } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
+        if (annData) setAnnouncements(annData as Announcement[]);
+
+        const { data: promData } = await supabase.from('promotions').select('*').order('created_at', { ascending: false });
+        if (promData) setPromotions(promData as Promotion[]);
+
+      } catch (error) {
+        console.error('Erro ao buscar dados:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Efeito para salvar apenas a sessão do usuário
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('francal_user', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('francal_user');
+    }
+  }, [currentUser]);
 
   const handleLogin = (user: UserProfile) => {
     setCurrentUser(user);
     setNewUserForm(prev => ({ ...prev, dept: user.dept }));
-    localStorage.setItem('francal_user', JSON.stringify(user));
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
-    localStorage.removeItem('francal_user');
   };
 
   // Forms de Gerenciamento
@@ -95,7 +146,7 @@ const App: React.FC = () => {
   const isSuperUser = currentUser?.dept === 'TI' || currentUser?.dept === 'Diretoria';
   const canManage = isSuperUser || currentUser?.role === 'Gerente' || currentUser?.role === 'Supervisor';
 
-  const handleCreateUser = (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validação extra de segurança no lado do cliente
@@ -110,15 +161,30 @@ const App: React.FC = () => {
       }
     }
 
-    const user: UserProfile = {
-      id: `U-${Math.random().toString(36).substr(2, 3).toUpperCase()}`,
-      name: newUserForm.name,
-      dept: newUserForm.dept,
-      role: newUserForm.role
-    };
-    setUsers([...users, user]);
-    setNewUserForm({ ...newUserForm, name: '' });
-    alert(`Usuário ${user.name} cadastrado com sucesso!`);
+    const { data, error } = await supabase.from('profiles').insert([
+      {
+        full_name: newUserForm.name,
+        department: newUserForm.dept,
+        role: newUserForm.role
+      }
+    ]).select();
+
+    if (error) {
+      alert("Erro ao criar usuário: " + error.message);
+      return;
+    }
+
+    if (data) {
+      const newUser: UserProfile = {
+        id: data[0].id,
+        name: data[0].full_name,
+        dept: data[0].department as Department,
+        role: data[0].role
+      };
+      setUsers([...users, newUser]);
+      setNewUserForm({ ...newUserForm, name: '' });
+      alert(`Usuário ${newUser.name} cadastrado com sucesso!`);
+    }
   };
 
   const handleCreateDept = (e: React.FormEvent) => {
@@ -149,7 +215,18 @@ const App: React.FC = () => {
     alert(`Cargo adicionado ao departamento selecionado!`);
   };
 
-  const updateStats = (newStats: DeptDashboardStats) => {
+  const updateStats = async (newStats: DeptDashboardStats) => {
+    // No Supabase, atualizaríamos cada métrica individualmente
+    const updates = newStats.metrics.map(m =>
+      supabase.from('dept_metrics').upsert({
+        department: newStats.dept,
+        label: m.label,
+        value: m.value
+      })
+    );
+
+    await Promise.all(updates);
+
     setDeptStats(prev => {
       const existing = prev.find(s => s.dept === newStats.dept);
       if (existing) {
@@ -159,15 +236,88 @@ const App: React.FC = () => {
     });
   };
 
-  const addTicket = (ticket: Ticket) => setTickets([ticket, ...tickets]);
-  const updateTicketStatus = (id: string, status: TicketStatus) => {
-    setTickets(prev => prev.map(t => t.id === id ? { ...t, status } : t));
+  const handleAddAnnouncement = async (ann: Announcement) => {
+    const { data, error } = await supabase.from('announcements').insert([
+      {
+        title: ann.title,
+        content: ann.content,
+        department: ann.department,
+        author_id: currentUser?.id
+      }
+    ]).select();
+
+    if (!error && data) {
+      setAnnouncements([{ ...ann, id: data[0].id }, ...announcements]);
+    }
   };
-  const addMessageToTicket = (id: string, message: TicketMessage) => {
-    setTickets(prev => prev.map(t => t.id === id ? { ...t, messages: [...t.messages, message], status: 'Em Andamento' } : t));
+
+  const handleAddPromotion = async (promo: Promotion) => {
+    const { data, error } = await supabase.from('promotions').insert([
+      {
+        title: promo.title,
+        description: promo.description,
+        department: promo.department,
+        status: promo.status
+      }
+    ]).select();
+
+    if (!error && data) {
+      setPromotions([{ ...promo, id: data[0].id }, ...promotions]);
+    }
   };
-  const assignTicket = (id: string, userId: string, userName: string) => {
-    setTickets(prev => prev.map(t => t.id === id ? { ...t, assignedTo: userName, assignedToId: userId } : t));
+
+  const addTicket = async (ticket: Ticket) => {
+    const { data, error } = await supabase.from('tickets').insert([
+      {
+        id: ticket.id,
+        title: ticket.title,
+        description: ticket.description,
+        from_department: ticket.fromDepartment,
+        to_department: ticket.toDepartment,
+        created_by_id: ticket.createdById,
+        assigned_to_id: ticket.assignedToId,
+        status: ticket.status,
+        priority: ticket.priority
+      }
+    ]).select();
+
+    if (error) {
+      alert("Erro ao criar chamado: " + error.message);
+      return;
+    }
+
+    if (data) {
+      setTickets([ticket, ...tickets]);
+    }
+  };
+
+  const updateTicketStatus = async (id: string, status: TicketStatus) => {
+    const { error } = await supabase.from('tickets').update({ status }).eq('id', id);
+    if (!error) {
+      setTickets(prev => prev.map(t => t.id === id ? { ...t, status } : t));
+    }
+  };
+
+  const addMessageToTicket = async (id: string, message: TicketMessage) => {
+    const { error } = await supabase.from('ticket_messages').insert([
+      {
+        ticket_id: id,
+        author_id: currentUser?.id,
+        text: message.text
+      }
+    ]);
+
+    if (!error) {
+      await supabase.from('tickets').update({ status: 'Em Andamento' }).eq('id', id);
+      setTickets(prev => prev.map(t => t.id === id ? { ...t, messages: [...t.messages, message], status: 'Em Andamento' } : t));
+    }
+  };
+
+  const assignTicket = async (id: string, userId: string, userName: string) => {
+    const { error } = await supabase.from('tickets').update({ assigned_to_id: userId }).eq('id', id);
+    if (!error) {
+      setTickets(prev => prev.map(t => t.id === id ? { ...t, assignedTo: userName, assignedToId: userId } : t));
+    }
   };
 
   useEffect(() => {
@@ -238,9 +388,9 @@ const App: React.FC = () => {
           departments={allDepartments}
           promotions={promotions}
           announcements={announcements}
-          onAddPromotion={(p) => setPromotions([p, ...promotions])}
+          onAddPromotion={handleAddPromotion}
           onUpdatePromotion={() => { }}
-          onAddAnnouncement={(a) => setAnnouncements([a, ...announcements])}
+          onAddAnnouncement={handleAddAnnouncement}
           onUpdateAnnouncement={() => { }}
         />
       )}
