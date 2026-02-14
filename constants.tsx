@@ -1,13 +1,13 @@
 
 import React from 'react';
-import { 
-  Briefcase, 
-  Users, 
-  Settings, 
-  Truck, 
-  Monitor, 
-  DollarSign, 
-  TrendingUp, 
+import {
+  Briefcase,
+  Users,
+  Settings,
+  Truck,
+  Monitor,
+  DollarSign,
+  TrendingUp,
   ShieldCheck,
   LayoutDashboard,
   Ticket as TicketIcon,
@@ -16,7 +16,7 @@ import {
   Scale,
   Archive
 } from 'lucide-react';
-import { Department } from './types';
+import { Department } from './types.ts';
 
 export const SYSTEM_NAME = "FRANCAL CONECTA";
 
@@ -30,67 +30,67 @@ export interface DeptInfo {
 }
 
 export const DEPARTMENTS: DeptInfo[] = [
-  { 
-    id: 'Comercial', 
-    label: 'Comercial', 
-    icon: <TrendingUp size={18} />, 
-    color: 'bg-green-500', 
+  {
+    id: 'Comercial',
+    label: 'Comercial',
+    icon: <TrendingUp size={18} />,
+    color: 'bg-green-500',
     themeColor: '#22c55e',
     roles: ['Diretor', 'Gerente', 'Supervisor', 'Vendedor', 'Suporte']
   },
-  { 
-    id: 'Financeiro', 
-    label: 'Financeiro', 
-    icon: <DollarSign size={18} />, 
-    color: 'bg-blue-500', 
+  {
+    id: 'Financeiro',
+    label: 'Financeiro',
+    icon: <DollarSign size={18} />,
+    color: 'bg-blue-500',
     themeColor: '#3b82f6',
     roles: ['Gerente', 'Supervisor', 'Financeiro']
   },
-  { 
-    id: 'Diretoria', 
-    label: 'Diretoria', 
-    icon: <ShieldCheck size={18} />, 
-    color: 'bg-royal-blue', 
+  {
+    id: 'Diretoria',
+    label: 'Diretoria',
+    icon: <ShieldCheck size={18} />,
+    color: 'bg-royal-blue',
     themeColor: '#002366',
     roles: ['Donos', 'Diretores', 'Gerentes']
   },
-  { 
-    id: 'TI', 
-    label: 'TI', 
-    icon: <Monitor size={18} />, 
-    color: 'bg-gray-800', 
+  {
+    id: 'TI',
+    label: 'TI',
+    icon: <Monitor size={18} />,
+    color: 'bg-gray-800',
     themeColor: '#1f2937',
     roles: ['Gerente', 'TI']
   },
-  { 
-    id: 'Logística', 
-    label: 'Logística', 
-    icon: <Truck size={18} />, 
-    color: 'bg-orange-600', 
+  {
+    id: 'Logística',
+    label: 'Logística',
+    icon: <Truck size={18} />,
+    color: 'bg-orange-600',
     themeColor: '#ea580c',
     roles: ['Gerente', 'Supervisor', 'Encarregado', 'Separador', 'Motorista', 'Faturamento']
   },
-  { 
-    id: 'RH', 
-    label: 'RH', 
-    icon: <HeartHandshake size={18} />, 
-    color: 'bg-pink-500', 
+  {
+    id: 'RH',
+    label: 'RH',
+    icon: <HeartHandshake size={18} />,
+    color: 'bg-pink-500',
     themeColor: '#ec4899',
     roles: ['Gerente RH', 'Gerente Departamento Pessoal', 'RH', 'Departamento RH']
   },
-  { 
-    id: 'Crédito', 
-    label: 'Crédito', 
-    icon: <CreditCard size={18} />, 
-    color: 'bg-indigo-500', 
+  {
+    id: 'Crédito',
+    label: 'Crédito',
+    icon: <CreditCard size={18} />,
+    color: 'bg-indigo-500',
     themeColor: '#6366f1',
     roles: ['Gerente Crédito', 'Supervisor Crédito', 'Crédito']
   },
-  { 
-    id: 'Fiscal', 
-    label: 'Fiscal', 
-    icon: <Scale size={18} />, 
-    color: 'bg-amber-600', 
+  {
+    id: 'Fiscal',
+    label: 'Fiscal',
+    icon: <Scale size={18} />,
+    color: 'bg-amber-600',
     themeColor: '#d97706',
     roles: ['Gerente Fiscal', 'Fiscal']
   },
