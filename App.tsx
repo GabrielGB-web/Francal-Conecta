@@ -78,6 +78,7 @@ const App: React.FC = () => {
 
   const handleLogin = (user: UserProfile) => {
     setCurrentUser(user);
+    setNewUserForm(prev => ({ ...prev, dept: user.dept }));
     localStorage.setItem('francal_user', JSON.stringify(user));
   };
 
@@ -96,6 +97,19 @@ const App: React.FC = () => {
 
   const handleCreateUser = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validação extra de segurança no lado do cliente
+    if (!isSuperUser) {
+      if (newUserForm.dept !== currentUser?.dept) return;
+      const deptRoles = allDepartments.find(d => d.id === currentUser?.dept)?.roles || [];
+      const currentRoleIndex = deptRoles.indexOf(currentUser?.role || '');
+      const newRoleIndex = deptRoles.indexOf(newUserForm.role);
+      if (newRoleIndex <= currentRoleIndex) {
+        alert("Você só pode criar usuários com cargos abaixo do seu.");
+        return;
+      }
+    }
+
     const user: UserProfile = {
       id: `U-${Math.random().toString(36).substr(2, 3).toUpperCase()}`,
       name: newUserForm.name,
@@ -239,6 +253,8 @@ const App: React.FC = () => {
                 <h2 className="text-3xl font-black text-royal-blue flex items-center gap-4 uppercase tracking-tight"><Settings size={36} /> Gestão Corporativa</h2>
                 <p className="text-sm text-gray-400 font-bold uppercase tracking-widest mt-1">Configurações de Acesso e Estrutura</p>
               </div>
+            </div>
+            {isSuperUser && (
               <div className="bg-blue-50 p-8 rounded-[2.5rem] border-2 border-blue-100 shadow-sm">
                 <p className="text-[10px] font-black text-royal-blue uppercase mb-5 px-1 tracking-widest">Painel de Troca Rápida</p>
                 <div className="flex gap-2 flex-wrap max-w-md">
@@ -249,85 +265,99 @@ const App: React.FC = () => {
                   ))}
                 </div>
               </div>
-            </div>
-
-            {isSuperUser && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-16">
-                {/* Criar Departamento */}
-                <div className="p-12 bg-white rounded-[3.5rem] border-2 border-gray-100 relative group hover:border-royal-blue/30 transition-all shadow-sm">
-                  <div className="absolute -top-5 left-10 bg-royal-blue text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl">Nova Divisão</div>
-                  <h3 className="text-xl font-black text-royal-blue mb-10 flex items-center gap-4"><Plus size={24} /> Criar Setor</h3>
-                  <form onSubmit={handleCreateDept} className="space-y-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Identificador</label>
-                      <input required value={newDeptName} onChange={e => setNewDeptName(e.target.value)} className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-6 py-4 text-xs font-bold text-royal-blue focus:border-royal-blue outline-none transition-all" placeholder="Marketing, Almoxarifado..." />
-                    </div>
-                    <button type="submit" className="w-full bg-royal-blue text-white py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-900 transition-all flex items-center justify-center gap-3">Ativar Departamento</button>
-                  </form>
-                </div>
-
-                {/* Adicionar Cargos */}
-                <div className="p-12 bg-white rounded-[3.5rem] border-2 border-gray-100 relative group hover:border-royal-blue/30 transition-all shadow-sm">
-                  <div className="absolute -top-5 left-10 bg-royal-blue text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl">Hierarquia</div>
-                  <h3 className="text-xl font-black text-royal-blue mb-10 flex items-center gap-4"><Briefcase size={24} /> Criar Função</h3>
-                  <form onSubmit={handleAddRole} className="space-y-6">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Departamento</label>
-                        <select value={roleForm.deptId} onChange={e => setRoleForm({ ...roleForm, deptId: e.target.value })} className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-6 py-4 text-xs font-black text-royal-blue outline-none">
-                          {allDepartments.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Nome do Cargo</label>
-                        <input required value={roleForm.roleName} onChange={e => setRoleForm({ ...roleForm, roleName: e.target.value })} className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-6 py-4 text-xs font-bold text-royal-blue outline-none" placeholder="Ex: Coordenador" />
-                      </div>
-                    </div>
-                    <button type="submit" className="w-full bg-royal-blue text-white py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-900 transition-all flex items-center justify-center gap-3">Anexar Cargo</button>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {canManage && (
-              <div className="p-12 bg-blue-50 rounded-[4rem] border-2 border-blue-100 relative shadow-inner">
-                <h3 className="text-2xl font-black text-royal-blue mb-12 flex items-center gap-5 uppercase tracking-tight"><UserPlus size={32} /> Registrar Colaborador</h3>
-                <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-4 gap-10">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-royal-blue uppercase ml-2 tracking-widest">Nome Completo</label>
-                    <input required value={newUserForm.name} onChange={e => setNewUserForm({ ...newUserForm, name: e.target.value })} className="w-full bg-white border-2 border-royal-blue/10 rounded-2xl px-6 py-4 text-xs font-bold text-royal-blue focus:border-royal-blue transition-all shadow-sm outline-none" />
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-royal-blue uppercase ml-2 tracking-widest">Lotação</label>
-                    <select
-                      value={newUserForm.dept}
-                      onChange={e => setNewUserForm({ ...newUserForm, dept: e.target.value })}
-                      className="w-full bg-white border-2 border-royal-blue/10 rounded-2xl px-6 py-4 text-xs font-black text-royal-blue outline-none shadow-sm"
-                    >
-                      {allDepartments.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-royal-blue uppercase ml-2 tracking-widest">Função Atribuída</label>
-                    <select
-                      value={newUserForm.role}
-                      onChange={e => setNewUserForm({ ...newUserForm, role: e.target.value })}
-                      className="w-full bg-white border-2 border-royal-blue/10 rounded-2xl px-6 py-4 text-xs font-black text-royal-blue outline-none shadow-sm"
-                    >
-                      {(allDepartments.find(d => d.id === newUserForm.dept)?.roles || []).map((r: string) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-end">
-                    <button type="submit" className="w-full bg-royal-blue text-white py-4.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-blue-900 transition-all active:scale-95 flex items-center justify-center gap-3">
-                      <ShieldPlus size={20} /> Ativar Conta
-                    </button>
-                  </div>
-                </form>
-              </div>
             )}
           </div>
+
+          {isSuperUser && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-16">
+              {/* Criar Departamento */}
+              <div className="p-12 bg-white rounded-[3.5rem] border-2 border-gray-100 relative group hover:border-royal-blue/30 transition-all shadow-sm">
+                <div className="absolute -top-5 left-10 bg-royal-blue text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl">Nova Divisão</div>
+                <h3 className="text-xl font-black text-royal-blue mb-10 flex items-center gap-4"><Plus size={24} /> Criar Setor</h3>
+                <form onSubmit={handleCreateDept} className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Identificador</label>
+                    <input required value={newDeptName} onChange={e => setNewDeptName(e.target.value)} className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-6 py-4 text-xs font-bold text-royal-blue focus:border-royal-blue outline-none transition-all" placeholder="Marketing, Almoxarifado..." />
+                  </div>
+                  <button type="submit" className="w-full bg-royal-blue text-white py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-900 transition-all flex items-center justify-center gap-3">Ativar Departamento</button>
+                </form>
+              </div>
+
+              {/* Adicionar Cargos */}
+              <div className="p-12 bg-white rounded-[3.5rem] border-2 border-gray-100 relative group hover:border-royal-blue/30 transition-all shadow-sm">
+                <div className="absolute -top-5 left-10 bg-royal-blue text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl">Hierarquia</div>
+                <h3 className="text-xl font-black text-royal-blue mb-10 flex items-center gap-4"><Briefcase size={24} /> Criar Função</h3>
+                <form onSubmit={handleAddRole} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Departamento</label>
+                      <select value={roleForm.deptId} onChange={e => setRoleForm({ ...roleForm, deptId: e.target.value })} className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-6 py-4 text-xs font-black text-royal-blue outline-none">
+                        {allDepartments.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase ml-2 tracking-widest">Nome do Cargo</label>
+                      <input required value={roleForm.roleName} onChange={e => setRoleForm({ ...roleForm, roleName: e.target.value })} className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-6 py-4 text-xs font-bold text-royal-blue outline-none" placeholder="Ex: Coordenador" />
+                    </div>
+                  </div>
+                  <button type="submit" className="w-full bg-royal-blue text-white py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-900 transition-all flex items-center justify-center gap-3">Anexar Cargo</button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {canManage && (
+            <div className="p-12 bg-blue-50 rounded-[4rem] border-2 border-blue-100 relative shadow-inner">
+              <h3 className="text-2xl font-black text-royal-blue mb-12 flex items-center gap-5 uppercase tracking-tight"><UserPlus size={32} /> Registrar Colaborador</h3>
+              <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-4 gap-10">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-royal-blue uppercase ml-2 tracking-widest">Nome Completo</label>
+                  <input required value={newUserForm.name} onChange={e => setNewUserForm({ ...newUserForm, name: e.target.value })} className="w-full bg-white border-2 border-royal-blue/10 rounded-2xl px-6 py-4 text-xs font-bold text-royal-blue focus:border-royal-blue transition-all shadow-sm outline-none" />
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-royal-blue uppercase ml-2 tracking-widest">Lotação</label>
+                  <select
+                    value={newUserForm.dept}
+                    onChange={e => setNewUserForm({ ...newUserForm, dept: e.target.value })}
+                    disabled={!isSuperUser}
+                    className="w-full bg-white border-2 border-royal-blue/10 rounded-2xl px-6 py-4 text-xs font-black text-royal-blue outline-none shadow-sm disabled:opacity-50"
+                  >
+                    {isSuperUser ? (
+                      allDepartments.map(d => <option key={d.id} value={d.id}>{d.label}</option>)
+                    ) : (
+                      <option value={currentUser?.dept}>{currentUser?.dept}</option>
+                    )}
+                  </select>
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-royal-blue uppercase ml-2 tracking-widest">Função Atribuída</label>
+                  <select
+                    value={newUserForm.role}
+                    onChange={e => setNewUserForm({ ...newUserForm, role: e.target.value })}
+                    className="w-full bg-white border-2 border-royal-blue/10 rounded-2xl px-6 py-4 text-xs font-black text-royal-blue outline-none shadow-sm"
+                  >
+                    {(() => {
+                      const dept = allDepartments.find(d => d.id === (isSuperUser ? newUserForm.dept : currentUser?.dept));
+                      const roles = dept?.roles || [];
+
+                      if (isSuperUser) return roles.map((r: string) => <option key={r} value={r}>{r}</option>);
+
+                      // Para não-superusers (Gerentes/Supervisores), mostrar apenas cargos abaixo na hierarquia
+                      const currentRoleIndex = roles.indexOf(currentUser?.role || '');
+                      return roles.slice(currentRoleIndex + 1).map((r: string) => (
+                        <option key={r} value={r}>{r}</option>
+                      ));
+                    })()}
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <button type="submit" className="w-full bg-royal-blue text-white py-4.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-blue-900 transition-all active:scale-95 flex items-center justify-center gap-3">
+                    <ShieldPlus size={20} /> Ativar Conta
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
         </div>
       )}
     </Layout>
